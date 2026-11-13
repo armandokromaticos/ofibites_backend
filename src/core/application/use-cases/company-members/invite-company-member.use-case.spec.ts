@@ -19,6 +19,7 @@ describe("InviteCompanyMemberUseCase", () => {
   const findUniqueUser = jest.fn();
   const createUser = jest.fn();
   const createMember = jest.fn();
+  const existsMember = jest.fn();
   const inviteUserByEmail = jest.fn();
 
   const companyRepository = {
@@ -30,6 +31,7 @@ describe("InviteCompanyMemberUseCase", () => {
   } as unknown as IUserRepository;
   const memberRepository = {
     create: createMember,
+    exists: existsMember,
   } as unknown as ICompanyMemberRepository;
   const branchRepository = {} as unknown as IBranchRepository;
   const departmentRepository = {} as unknown as IDepartmentRepository;
@@ -44,6 +46,7 @@ describe("InviteCompanyMemberUseCase", () => {
     findUniqueUser.mockReset();
     createUser.mockReset();
     createMember.mockReset();
+    existsMember.mockReset();
     inviteUserByEmail.mockReset();
     useCase = new InviteCompanyMemberUseCase(
       memberRepository,
@@ -98,4 +101,26 @@ describe("InviteCompanyMemberUseCase", () => {
     expect(result.userEmail).toBe("juan.perez@diageo.com");
     expect(result.userPhone).toBe("+584141234567");
   });
+
+  it.each([
+    [true, "Esta persona ya forma parte del equipo."],
+    [false, "Ya existe una cuenta de Ofibites con este correo."],
+  ])(
+    "409 con mensaje para el usuario si el correo ya existe (miembro=%s)",
+    async (isMember, message) => {
+      findUniqueCompany.mockResolvedValue({
+        id: companyId,
+      } as unknown as CompanyEntity);
+      findUniqueUser.mockResolvedValue({ id: userId });
+      existsMember.mockResolvedValue(isMember);
+
+      const dto = new InviteCompanyMemberDto();
+      dto.name = "Juan Perez";
+      dto.email = "juan.perez@diageo.com";
+      dto.role = CompanyRole.COMPANY_BUYER;
+
+      await expect(useCase.execute(companyId, dto)).rejects.toThrow(message);
+      expect(inviteUserByEmail).not.toHaveBeenCalled();
+    },
+  );
 });
