@@ -34,7 +34,8 @@ export function deliveryCutoffError(
   if (deliveryDate < tomorrow) {
     return {
       code: CheckoutErrorCode.DELIVERY_CUTOFF,
-      message: "La fecha de entrega debe ser a partir de mañana",
+      message:
+        "Para esa fecha ya pasó la hora límite (3:00 p. m. del día anterior). Elige otra.",
     };
   }
   if (
@@ -44,7 +45,7 @@ export function deliveryCutoffError(
     return {
       code: CheckoutErrorCode.DELIVERY_CUTOFF,
       message:
-        "Los pedidos para mañana se agendan hasta las 3:00 p.m. (hora de Caracas). Elige una fecha posterior",
+        "Para esa fecha ya pasó la hora límite (3:00 p. m. del día anterior). Elige otra.",
     };
   }
   if (deliveryDate > caracasDateKeyPlusDays(DELIVERY_MAX_DAYS_AHEAD, now)) {

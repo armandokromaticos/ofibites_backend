@@ -129,18 +129,18 @@ describe("ApplyCartCouponUseCase", () => {
   });
 
   it.each([
-    ["no existe", null, "Ese código no existe."],
+    [
+      "no existe",
+      null,
+      "Ese código no es válido. Revísalo e inténtalo de nuevo.",
+    ],
     [
       "vencido",
       coupon({ expiresAt: new Date(Date.now() - DAY) }),
-      "Ese código ya no está vigente.",
+      "Ese código ya venció.",
     ],
-    ["inactivo", coupon({ isActive: false }), "Ese código ya no está vigente."],
-    [
-      "sin usos",
-      coupon({ usedQuantity: 100 }),
-      "Ese código ya no está vigente.",
-    ],
+    ["inactivo", coupon({ isActive: false }), "Ese código ya venció."],
+    ["sin usos", coupon({ usedQuantity: 100 }), "Ese código ya venció."],
     [
       "de otra empresa",
       coupon({ companyId: "company-2" }),

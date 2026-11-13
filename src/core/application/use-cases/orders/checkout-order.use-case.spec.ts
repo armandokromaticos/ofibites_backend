@@ -519,7 +519,7 @@ describe("CheckoutOrderUseCase", () => {
         const { useCase } = setup();
         await expect(
           useCase.execute(COMPANY, ACTOR, dto({ deliveryDate: "2026-10-17" })),
-        ).rejects.toThrow(/hasta las 3:00 p\.m\./);
+        ).rejects.toThrow(/hora límite \(3:00 p\. m\. del día anterior\)/);
       } finally {
         jest.useRealTimers();
       }
