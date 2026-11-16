@@ -10,6 +10,11 @@ import { GetClientBranchBreakdownUseCase } from "../../core/application/use-case
 import { GetClientDepartmentBreakdownUseCase } from "../../core/application/use-cases/dashboard/get-client-department-breakdown.use-case";
 import { GetClientUserBreakdownUseCase } from "../../core/application/use-cases/dashboard/get-client-user-breakdown.use-case";
 import { ExportClientDashboardUseCase } from "../../core/application/use-cases/dashboard/export-client-dashboard.use-case";
+import { GetClientPreferencesUseCase } from "../../core/application/use-cases/dashboard/get-client-preferences.use-case";
+import { COMPANY_REGISTRATION_REQUEST_REPOSITORY } from "../../core/domain/repositories/company-registration-request.repository.interface";
+import { CompanyRegistrationRequestRepository } from "../../core/infrastructure/repositories/company-registration-request.repository";
+import { SECTION_REPOSITORY } from "../../core/domain/repositories/section.repository.interface";
+import { SectionRepository } from "../../core/infrastructure/repositories/section.repository";
 
 @Module({
   imports: [AuthModule],
@@ -23,6 +28,12 @@ import { ExportClientDashboardUseCase } from "../../core/application/use-cases/d
     GetClientDepartmentBreakdownUseCase,
     GetClientUserBreakdownUseCase,
     ExportClientDashboardUseCase,
+    {
+      provide: COMPANY_REGISTRATION_REQUEST_REPOSITORY,
+      useClass: CompanyRegistrationRequestRepository,
+    },
+    { provide: SECTION_REPOSITORY, useClass: SectionRepository },
+    GetClientPreferencesUseCase,
   ],
 })
 export class DashboardModule {}
