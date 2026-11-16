@@ -79,6 +79,9 @@ const SECCIONES = [
   },
   { slug: "desayunos", nameEs: "Desayunos", nameEn: "Breakfasts", order: 4 },
   { slug: "bebidas", nameEs: "Bebidas", nameEn: "Drinks", order: 5 },
+  // Soluciones SNACKS y DESSERTS de la solicitud de ingreso (T-45).
+  { slug: "snacks", nameEs: "Snacks", nameEn: "Snacks", order: 6 },
+  { slug: "postres", nameEs: "Postres", nameEn: "Desserts", order: 7 },
 ];
 type Seccion = (typeof SECCIONES)[number]["slug"];
 
@@ -266,7 +269,12 @@ const PRODUCTOS: ProductoSeed[] = [
       sodiumMg: 610,
     },
     isFeatured: true,
-    secciones: ["recomendados-de-la-semana", "coffee-break", "desayunos"],
+    secciones: [
+      "recomendados-de-la-semana",
+      "coffee-break",
+      "desayunos",
+      "snacks",
+    ],
   },
   {
     n: 1,
@@ -300,7 +308,7 @@ const PRODUCTOS: ProductoSeed[] = [
     }),
     isFeatured: true,
     isNew: true,
-    secciones: ["recomendados-de-la-semana", "coffee-break"],
+    secciones: ["recomendados-de-la-semana", "coffee-break", "postres"],
   },
   {
     n: 2,
@@ -323,7 +331,7 @@ const PRODUCTOS: ProductoSeed[] = [
     tags: ["sinGluten", "saludable"],
     ingredients: [7, 10, 24],
     isFeatured: true,
-    secciones: ["recomendados-de-la-semana", "coffee-break"],
+    secciones: ["recomendados-de-la-semana", "coffee-break", "snacks"],
   },
   {
     n: 3,
@@ -563,7 +571,7 @@ const PRODUCTOS: ProductoSeed[] = [
     ],
     sizes: tamanos(11, 30, 90),
     ingredients: [8, 14, 15, 23],
-    secciones: ["coffee-break", "desayunos"],
+    secciones: ["coffee-break", "desayunos", "postres"],
   },
   {
     n: 12,
@@ -590,7 +598,7 @@ const PRODUCTOS: ProductoSeed[] = [
       cholesterolMg: 60,
       sodiumMg: 980,
     }),
-    secciones: ["coffee-break"],
+    secciones: ["coffee-break", "snacks"],
   },
   {
     n: 13,

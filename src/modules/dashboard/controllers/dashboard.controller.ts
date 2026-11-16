@@ -36,6 +36,8 @@ import { GetClientBranchBreakdownUseCase } from "../../../core/application/use-c
 import { GetClientDepartmentBreakdownUseCase } from "../../../core/application/use-cases/dashboard/get-client-department-breakdown.use-case";
 import { GetClientUserBreakdownUseCase } from "../../../core/application/use-cases/dashboard/get-client-user-breakdown.use-case";
 import { ExportClientDashboardUseCase } from "../../../core/application/use-cases/dashboard/export-client-dashboard.use-case";
+import { ClientPreferencesResponseDto } from "../../../core/application/dto/dashboard/client-preferences-response.dto";
+import { GetClientPreferencesUseCase } from "../../../core/application/use-cases/dashboard/get-client-preferences.use-case";
 
 @ApiTags("Dashboard")
 @Controller("dashboard")
@@ -49,6 +51,7 @@ export class DashboardController {
     private readonly getClientDepartmentBreakdownUseCase: GetClientDepartmentBreakdownUseCase,
     private readonly getClientUserBreakdownUseCase: GetClientUserBreakdownUseCase,
     private readonly exportClientDashboardUseCase: ExportClientDashboardUseCase,
+    private readonly getClientPreferencesUseCase: GetClientPreferencesUseCase,
   ) {}
 
   @Get("client")
@@ -75,6 +78,26 @@ export class DashboardController {
       companyId,
       query.month,
     );
+  }
+
+  @Get("client/preferences")
+  @Roles(Role.CLIENT)
+  @CompanyRoles(...Object.values(CompanyRole))
+  @ApiOperation({
+    summary:
+      'Preferencias del equipo (T-45): soluciones de "¿Qué necesita tu equipo?" de la solicitud de ingreso de la empresa',
+  })
+  @ApiHeader({
+    name: "X-Company-Id",
+    required: true,
+    description: "Obligatorio: la empresa cuyas preferencias se leen.",
+  })
+  async getClientPreferences(
+    @Headers("x-company-id") companyIdHeader?: string,
+  ): Promise<ClientPreferencesResponseDto> {
+    // CompanyRoleGuard ya exigió el header y la membresía; llega siempre presente.
+    const companyId = this.parseCompanyIdHeader(companyIdHeader) as string;
+    return this.getClientPreferencesUseCase.execute(companyId);
   }
 
   @Get("client/breakdown/branches")
