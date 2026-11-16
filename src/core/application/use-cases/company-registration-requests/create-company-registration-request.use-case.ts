@@ -27,7 +27,7 @@ export class CreateCompanyRegistrationRequestUseCase {
     });
     if (companyWithTaxId) {
       throw new ConflictException(
-        `Ya existe una empresa registrada con el RIF ${taxId}.`,
+        "Ya existe una cuenta con este RIF. Si crees que es un error, contáctanos.",
       );
     }
 

@@ -8,7 +8,8 @@ describe("deliveryCutoffError (corte 15:00 de Caracas del día anterior)", () =>
   it("hoy nunca vale → DELIVERY_CUTOFF", () => {
     expect(deliveryCutoffError("2026-10-16", at("08:00"))).toEqual({
       code: "DELIVERY_CUTOFF",
-      message: "La fecha de entrega debe ser a partir de mañana",
+      message:
+        "Para esa fecha ya pasó la hora límite (3:00 p. m. del día anterior). Elige otra.",
     });
   });
 
@@ -26,7 +27,7 @@ describe("deliveryCutoffError (corte 15:00 de Caracas del día anterior)", () =>
     expect(deliveryCutoffError("2026-10-17", at("15:00"))).toEqual({
       code: "DELIVERY_CUTOFF",
       message:
-        "Los pedidos para mañana se agendan hasta las 3:00 p.m. (hora de Caracas). Elige una fecha posterior",
+        "Para esa fecha ya pasó la hora límite (3:00 p. m. del día anterior). Elige otra.",
     });
     expect(deliveryCutoffError("2026-10-17", at("23:30"))?.code).toBe(
       "DELIVERY_CUTOFF",

@@ -18,8 +18,9 @@ import { assertCompanyActive } from "../../shared/company-active.guard";
 
 /** Mensajes para el usuario final (los muestra el front tal cual). */
 export const CART_COUPON_MESSAGES: Record<CouponRejection, string> = {
-  [CouponRejection.NOT_FOUND]: "Ese código no existe.",
-  [CouponRejection.NOT_VALID]: "Ese código ya no está vigente.",
+  [CouponRejection.NOT_FOUND]:
+    "Ese código no es válido. Revísalo e inténtalo de nuevo.",
+  [CouponRejection.NOT_VALID]: "Ese código ya venció.",
   [CouponRejection.OTHER_COMPANY]: "Ese código no aplica a tu empresa.",
   [CouponRejection.ALREADY_USED]: "Ya usaste este código.",
 };

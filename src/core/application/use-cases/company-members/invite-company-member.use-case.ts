@@ -25,8 +25,7 @@ import { InviteCompanyMemberDto } from "../../dto/company-members/invite-company
 import { CompanyMemberEntity } from "../../../domain/entities/company-member.entity";
 import { UserEntity } from "../../../domain/entities/user.entity";
 
-const EMAIL_EXISTS_HINT =
-  "Este email ya existe en la plataforma. Use POST /companies/:companyId/members con el userId existente.";
+const EMAIL_EXISTS_HINT = "Ya existe una cuenta de Ofibites con este correo.";
 
 @Injectable()
 export class InviteCompanyMemberUseCase {
@@ -85,7 +84,14 @@ export class InviteCompanyMemberUseCase {
       where: { email },
     });
     if (existingUser) {
-      throw new ConflictException(EMAIL_EXISTS_HINT);
+      const isMember = await this.memberRepository.exists({
+        where: { userId: existingUser.id, companyId },
+      });
+      throw new ConflictException(
+        isMember
+          ? "Esta persona ya forma parte del equipo."
+          : EMAIL_EXISTS_HINT,
+      );
     }
 
     this.logger.log(`Invitando usuario ${email} a company ${companyId}`);
