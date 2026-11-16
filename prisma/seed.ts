@@ -213,13 +213,27 @@ interface ProductoSeed {
   secciones: Seccion[];
 }
 
-/** Tres tamaños (4, 8 y 12 personas) con IDs `n*10 + 0..2`, como en los datos de ejemplo del front. */
+const redondear = (x: number) => (Math.round(x * 100) / 100).toFixed(2);
+
+/**
+ * Seis tamaños (4, 6, 8, 10, 12 y 15 personas), en orden de personas. IDs estables:
+ * 4/8/12 → `n*10 + 0..2` (los de los datos de ejemplo del front), 6/10/15 → `n*10 + 3..5`.
+ * Precios: 4 = desde, 12 = hasta, 8 = punto medio; 6 y 10 interpolan entre sus vecinos
+ * y 15 = 12 + 3 × (precio por persona del tramo 8→12). Redondeo a 2 decimales.
+ */
 function tamanos(n: number, desde: number, hasta: number): TamanoSeed[] {
   const medio = Math.round(((desde + hasta) / 2) * 100) / 100;
   return [
     { n: n * 10, servings: 4, price: desde.toFixed(2), isDefault: true },
+    { n: n * 10 + 3, servings: 6, price: redondear((desde + medio) / 2) },
     { n: n * 10 + 1, servings: 8, price: medio.toFixed(2) },
+    { n: n * 10 + 4, servings: 10, price: redondear((medio + hasta) / 2) },
     { n: n * 10 + 2, servings: 12, price: hasta.toFixed(2) },
+    {
+      n: n * 10 + 5,
+      servings: 15,
+      price: redondear(hasta + (3 * (hasta - medio)) / 4),
+    },
   ];
 }
 
@@ -245,13 +259,14 @@ const PRODUCTOS: ProductoSeed[] = [
       `${IMG}/gallery/cafe-croissants.png`,
       `${IMG}/gallery/cafe-panes.png`,
     ],
-    // 8 personas = $34,00, el total del Figma.
+    // 8 personas = $34,00, el total del Figma. 15 personas = 12 + 3 × (58 − 34) / 4.
     sizes: [
       { n: 1, servings: 4, price: "22.00" },
       { n: 2, servings: 6, price: "28.00" },
       { n: 3, servings: 8, price: "34.00", isDefault: true },
       { n: 4, servings: 10, price: "46.00" },
       { n: 5, servings: 12, price: "58.00" },
+      { n: 6, servings: 15, price: "76.00" },
     ],
     ingredients: [1, 2, 3, 4, 5, 6, 7, 8, 9],
     nutrition: {
