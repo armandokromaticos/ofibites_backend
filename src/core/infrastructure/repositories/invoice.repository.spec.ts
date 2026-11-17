@@ -212,6 +212,7 @@ describe("OrderRepository.updateStatus (T-06)", () => {
     });
     return {
       ...base,
+      orderStatusHistory: { create: jest.fn(() => Promise.resolve({})) },
       order: {
         ...base.order,
         updateMany: jest.fn(() => Promise.resolve({ count: options.moved })),
@@ -253,6 +254,29 @@ describe("OrderRepository.updateStatus (T-06)", () => {
       data: { status: OrderStatus.CONFIRMED },
     });
     expect(tx.invoice.create).not.toHaveBeenCalled();
+    // T-38: sin transición no hay fila de historial.
+    expect(tx.orderStatusHistory.create).not.toHaveBeenCalled();
+  });
+
+  it("escribe el historial de la transición en la misma transacción (T-38)", async () => {
+    const tx = orderTx({ moved: 1 });
+    const repo = new OrderRepository(prismaWith(tx));
+    await repo.updateStatus(
+      "order-1",
+      OrderStatus.IN_PREPARATION,
+      OrderStatus.CONFIRMED,
+      "admin-1",
+    );
+    expect(tx.orderStatusHistory.create).toHaveBeenCalledTimes(1);
+    expect(tx.orderStatusHistory.create).toHaveBeenCalledWith({
+      data: {
+        orderId: "order-1",
+        fromStatus: OrderStatus.CONFIRMED,
+        toStatus: OrderStatus.IN_PREPARATION,
+        changedAt: expect.any(Date) as unknown as Date,
+        changedById: "admin-1",
+      },
+    });
   });
 
   it("a CONFIRMED emite la factura en la misma transacción", async () => {

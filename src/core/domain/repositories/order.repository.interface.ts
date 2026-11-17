@@ -5,10 +5,42 @@ import { INVOICE_SUMMARY_INCLUDE } from "./invoice.repository.interface";
 
 export const ORDER_REPOSITORY = Symbol("ORDER_REPOSITORY");
 
+const LOCALIZED_TEXT_SELECT = {
+  nameEs: true,
+  nameEn: true,
+  descriptionEs: true,
+  descriptionEn: true,
+} as const;
+
 export const ORDER_FULL_INCLUDE = {
-  items: { include: { modifiers: true } },
+  items: {
+    include: {
+      // T-38: nombre del modificador para distinguir líneas con extras distintos.
+      modifiers: {
+        include: { modifier: { select: { nameEs: true, nameEn: true } } },
+      },
+      // T-38: nombre, descripción, imagen y servings (caja/complemento) del
+      // catálogo actual; los precios siguen congelados en la línea.
+      product: { select: { ...LOCALIZED_TEXT_SELECT, image: true } },
+      productSize: { select: { ...LOCALIZED_TEXT_SELECT, servings: true } },
+      combo: { select: { ...LOCALIZED_TEXT_SELECT, image: true } },
+    },
+  },
   // T-06: factura del pedido con su último pago (OrderResponseDto.invoice).
   invoice: { include: INVOICE_SUMMARY_INCLUDE },
+  // T-38: quién hizo el pedido y su departamento.
+  user: { select: { id: true, name: true } },
+  createdBy: { select: { id: true, name: true } },
+  department: { select: { id: true, name: true } },
+} as const satisfies Prisma.OrderInclude;
+
+/** `GET /orders/:id`: lo de `ORDER_FULL_INCLUDE` más el historial de estados (T-38). */
+export const ORDER_DETAIL_INCLUDE = {
+  ...ORDER_FULL_INCLUDE,
+  statusHistory: {
+    select: { toStatus: true, changedAt: true, estimated: true },
+    orderBy: { changedAt: "asc" },
+  },
 } as const satisfies Prisma.OrderInclude;
 
 export type OrderVisibilityFilter =
@@ -78,11 +110,13 @@ export interface IOrderRepository {
    * en `from` (si no, `InvoiceRuleException("ORDER_STATUS_CHANGED")`). Al pasar
    * a CONFIRMED emite la factura; al pasar a CANCELLED la anula o, si tiene
    * pagos aprobados, lanza `InvoiceRuleException("ORDER_HAS_APPROVED_PAYMENTS")`
-   * sin cambiar nada (T-06).
+   * sin cambiar nada (T-06). En la misma transacción escribe la fila de
+   * `OrderStatusHistory` (`from` → `status`, `changedById`) (T-38).
    */
   updateStatus(
     id: string,
     status: OrderStatus,
     from: OrderStatus,
+    changedById?: string,
   ): Promise<OrderEntity>;
 }

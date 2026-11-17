@@ -15,6 +15,7 @@ import {
 } from "@nestjs/common";
 import {
   ApiBearerAuth,
+  ApiBody,
   ApiHeader,
   ApiOkResponse,
   ApiOperation,
@@ -43,6 +44,9 @@ import { RepeatOrderIntoCartResponseDto } from "../../../core/application/dto/ca
 import { ApplyCartCouponDto } from "../../../core/application/dto/cart/apply-cart-coupon.dto";
 import { ApplyCartCouponUseCase } from "../../../core/application/use-cases/cart/apply-cart-coupon.use-case";
 import { RemoveCartCouponUseCase } from "../../../core/application/use-cases/cart/remove-cart-coupon.use-case";
+import { PreviewRepeatOrderUseCase } from "../../../core/application/use-cases/cart/preview-repeat-order.use-case";
+import { RepeatOrderIntoCartDto } from "../../../core/application/dto/cart/repeat-order-into-cart.dto";
+import { RepeatPreviewResponseDto } from "../../../core/application/dto/cart/repeat-preview-response.dto";
 
 const orderIdPipe = new ParseUUIDPipe({
   exceptionFactory: () =>
@@ -74,6 +78,7 @@ export class CartController {
     private readonly repeatOrderIntoCartUseCase: RepeatOrderIntoCartUseCase,
     private readonly applyCartCouponUseCase: ApplyCartCouponUseCase,
     private readonly removeCartCouponUseCase: RemoveCartCouponUseCase,
+    private readonly previewRepeatOrderUseCase: PreviewRepeatOrderUseCase,
   ) {}
 
   @Get()
@@ -234,13 +239,52 @@ export class CartController {
     );
   }
 
+  // Antes que "repeat/:orderId" (rutas distintas, pero así se lee igual que /last).
+  @Post("repeat/:orderId/preview")
+  @HttpCode(200)
+  @PlatformOrCompanyRole(CART_ACCESS)
+  @ApiOperation({
+    summary:
+      "Vista previa de repetir un pedido (T-38): disponibilidad, precio del pedido vs. actual y resumen con las cantidades elegidas. No escribe nada.",
+  })
+  @ApiParam({ name: "orderId", format: "uuid" })
+  @ApiBody({ type: RepeatOrderIntoCartDto, required: false })
+  @ApiOkResponse({ type: RepeatPreviewResponseDto })
+  @ApiResponse({
+    status: 400,
+    description:
+      "Body inválido (REPEAT_ITEM_DUPLICATED, REPEAT_ITEM_NOT_IN_ORDER, lista vacía)",
+  })
+  @ApiResponse({ status: 403, description: "Sin acceso al pedido" })
+  @ApiResponse({
+    status: 404,
+    description: "El pedido no existe o es de otra empresa",
+  })
+  async previewRepeatOrder(
+    @Param("orderId", orderIdPipe) orderId: string,
+    @Body() dto: RepeatOrderIntoCartDto,
+    @Query() query: CartLangQueryDto,
+    @CurrentUser() user: { id: string; role: Role },
+    @Headers("x-company-id") companyIdHeader?: string,
+  ): Promise<RepeatPreviewResponseDto> {
+    const companyId = this.requireCompanyId(companyIdHeader);
+    return this.previewRepeatOrderUseCase.execute(
+      companyId,
+      { id: user.id, role: user.role },
+      orderId,
+      dto?.items,
+      query.lang,
+    );
+  }
+
   @Post("repeat/:orderId")
   @HttpCode(200)
   @PlatformOrCompanyRole(CART_ACCESS)
   @ApiOperation({
     summary:
-      "Copiar al carrito (en una transacción) las líneas disponibles de un pedido de la empresa. No crea pedido.",
+      "Copiar al carrito (en una transacción) las líneas disponibles de un pedido de la empresa. Con body { items }, solo esas líneas y cantidades (T-38). No crea pedido.",
   })
+  @ApiBody({ type: RepeatOrderIntoCartDto, required: false })
   @ApiParam({ name: "orderId", format: "uuid" })
   @ApiOkResponse({ type: RepeatOrderIntoCartResponseDto })
   @ApiResponse({
@@ -254,6 +298,7 @@ export class CartController {
   })
   async repeatOrder(
     @Param("orderId", orderIdPipe) orderId: string,
+    @Body() dto: RepeatOrderIntoCartDto,
     @Query() query: CartLangQueryDto,
     @CurrentUser() user: { id: string; role: Role },
     @Headers("x-company-id") companyIdHeader?: string,
@@ -262,7 +307,7 @@ export class CartController {
     return this.repeatOrderIntoCartUseCase.execute(
       companyId,
       { id: user.id, role: user.role },
-      { orderId },
+      dto?.items ? { orderId, items: dto.items } : { orderId },
       query.lang,
     );
   }
