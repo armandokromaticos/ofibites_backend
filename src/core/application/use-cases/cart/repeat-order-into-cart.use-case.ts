@@ -37,7 +37,11 @@ import {
 } from "../../services/line-item-availability.service";
 import { CartViewService } from "../../services/cart-view.service";
 import { assertCompanyActive } from "../../shared/company-active.guard";
-import { assertCanReadOrder } from "../../shared/order-read-access";
+import {
+  findRepeatOrderInCompany,
+  resolveRepeatSelection,
+  RepeatSelectionItem,
+} from "../../shared/repeat-order.util";
 import { localized } from "../catalog/catalog-entry.mapper";
 import {
   CartRepeatSkippedLineDto,
@@ -53,7 +57,13 @@ export const CART_REPEAT_REASONS: Record<LineAvailabilityCode, string> = {
 /** Estados que no cuentan como "último pedido" para repetir. */
 const NOT_REPEATABLE_STATUSES = [OrderStatus.CANCELLED, OrderStatus.REJECTED];
 
-export type RepeatTarget = { orderId: string } | { last: true };
+/**
+ * `items` (T-38): lo editado en "Repetir pedido" (solo esas líneas, con esas
+ * cantidades). Sin `items`, todas las líneas con su cantidad original.
+ */
+export type RepeatTarget =
+  | { orderId: string; items?: RepeatSelectionItem[] }
+  | { last: true };
 
 export interface RepeatActor {
   id: string;
@@ -107,13 +117,18 @@ export class RepeatOrderIntoCartUseCase {
     });
 
     const order = await this.findOrder(companyId, actor, target);
+    const selection = resolveRepeatSelection(
+      order.items ?? [],
+      "items" in target ? target.items : undefined,
+    );
 
     const lines: AddCartItemParams[] = [];
     const skipped: SkippedLine[] = [];
 
     // Las validaciones se leen fuera de la transacción; las escrituras van
     // todas juntas en addItemsAtomically.
-    for (const item of order.items ?? []) {
+    for (const { item, quantity, included } of selection) {
+      if (!included) continue;
       const modifiers = item.modifiers.map((m) => ({
         modifierId: m.modifierId,
       }));
@@ -121,7 +136,7 @@ export class RepeatOrderIntoCartUseCase {
         productId: item.productId,
         productSizeId: item.productSizeId,
         comboId: item.comboId,
-        quantity: item.quantity,
+        quantity,
         modifiers,
       };
       const code = await this.unavailabilityCode(input);
@@ -137,7 +152,7 @@ export class RepeatOrderIntoCartUseCase {
         productId: item.productId,
         productSizeId: item.productSizeId,
         comboId: item.comboId,
-        quantity: item.quantity,
+        quantity,
         modifierIds: modifiers.map((m) => m.modifierId),
         addedById: actor.id,
       });
@@ -194,18 +209,15 @@ export class RepeatOrderIntoCartUseCase {
       return data[0];
     }
 
-    const order = await this.orderRepository.findUnique({
-      where: { id: target.orderId },
-      include: ORDER_FULL_INCLUDE,
-    });
-    // Un pedido de otra empresa responde igual que uno inexistente.
-    if (!order || order.companyId !== companyId) {
-      throw new NotFoundException("Pedido no encontrado en esta empresa");
-    }
-    await assertCanReadOrder(order, actor.id, actor.role, {
-      companyMemberRepository: this.companyMemberRepository,
-    });
-    return order;
+    return findRepeatOrderInCompany(
+      {
+        orderRepository: this.orderRepository,
+        companyMemberRepository: this.companyMemberRepository,
+      },
+      companyId,
+      actor,
+      target.orderId,
+    );
   }
 
   private async withNames(

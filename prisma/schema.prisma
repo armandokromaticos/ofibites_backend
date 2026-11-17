@@ -42,6 +42,7 @@ model User {
   invoicePaymentsSubmitted InvoicePayment[]       @relation("InvoicePaymentSubmittedBy")
   invoicePaymentsReviewed  InvoicePayment[]       @relation("InvoicePaymentReviewedBy")
   fiscalPdfsUploaded       Invoice[]              @relation("InvoiceFiscalPdfUploadedBy")
+  orderStatusChanges       OrderStatusHistory[]   @relation("OrderStatusChangedBy")
 
   @@map("users")
 }
@@ -347,6 +348,9 @@ model Order {
   // anteriores al checkout quedan en 0 (su total era subtotal − descuento).
   tax               Decimal       @default(0) @db.Decimal(10, 2)
   shipping          Decimal       @default(0) @db.Decimal(10, 2)
+  // T-38: tasa de IVA congelada al crear el pedido (0.16 en el checkout; 0 en
+  // POST /orders y en los pedidos anteriores al checkout).
+  taxRate           Decimal       @default(0) @map("tax_rate") @db.Decimal(5, 4)
   // Número legible OF-AAAA-NNNN (secuencial por año de Caracas). Nullable solo
   // por la migración: el backfill lo rellena y todo pedido nuevo lo recibe.
   orderNumber       String?       @unique @map("order_number")
@@ -368,6 +372,7 @@ model Order {
   couponUsage     CouponUsage?
   notifications   Notification[]
   invoice         Invoice?
+  statusHistory   OrderStatusHistory[]
 
   @@index([userId])
   @@index([companyId])
@@ -382,6 +387,27 @@ model Order {
 // INSERT ... ON CONFLICT DO UPDATE ... RETURNING dentro de la transacción que
 // crea el pedido: el bloqueo de fila serializa checkouts simultáneos y un
 // rollback no deja huecos (a diferencia de una SEQUENCE).
+/// T-38: una fila por transición de estado (y una CREATED al crear el pedido),
+/// escrita en la misma transacción que el cambio. Los pedidos anteriores se
+/// rellenan en la migración 20261117_pedido_detalle (estimated = fecha
+/// reconstruida desde updated_at).
+model OrderStatusHistory {
+  id          String       @id @default(uuid())
+  orderId     String       @map("order_id")
+  fromStatus  OrderStatus? @map("from_status")
+  toStatus    OrderStatus  @map("to_status")
+  changedAt   DateTime     @default(now()) @map("changed_at")
+  changedById String?      @map("changed_by_id")
+  estimated   Boolean      @default(false)
+
+  order     Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  changedBy User? @relation("OrderStatusChangedBy", fields: [changedById], references: [id], onDelete: SetNull)
+
+  @@index([orderId, changedAt])
+  @@index([changedById])
+  @@map("order_status_history")
+}
+
 model OrderNumberCounter {
   year      Int @id
   lastValue Int @default(0) @map("last_value")

@@ -13,6 +13,7 @@ import {
   Min,
 } from "class-validator";
 import { OrderStatusGroup } from "../../../domain/services/order-status-groups";
+import { OrderLangQueryDto } from "./order-lang-query.dto";
 
 export const ORDERS_MAX_TAKE = 50;
 
@@ -23,7 +24,7 @@ function trimToUndefined({ value }: { value: unknown }): unknown {
   return trimmed === "" ? undefined : trimmed;
 }
 
-export class GetOrdersQueryDto {
+export class GetOrdersQueryDto extends OrderLangQueryDto {
   @ApiPropertyOptional({
     enum: OrderStatusGroup,
     description:

@@ -49,6 +49,7 @@ function order(
     discount: 0,
     tax: 0,
     shipping: 0,
+    taxRate: 0,
     total: 10,
     // Por defecto sin número (pedido anterior al backfill): usa el respaldo.
     orderNumber: overrides.orderNumber ?? null,
@@ -343,6 +344,7 @@ describe("generación al transicionar el pedido", () => {
       ORDER_ID,
       OrderStatus.DELIVERED,
       OrderStatus.IN_TRANSIT,
+      "admin-1",
     );
   });
 

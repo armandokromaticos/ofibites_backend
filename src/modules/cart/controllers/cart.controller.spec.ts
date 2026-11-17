@@ -13,6 +13,7 @@ import { ClearCartUseCase } from "../../../core/application/use-cases/cart/clear
 import { RepeatOrderIntoCartUseCase } from "../../../core/application/use-cases/cart/repeat-order-into-cart.use-case";
 import { ApplyCartCouponUseCase } from "../../../core/application/use-cases/cart/apply-cart-coupon.use-case";
 import { RemoveCartCouponUseCase } from "../../../core/application/use-cases/cart/remove-cart-coupon.use-case";
+import { PreviewRepeatOrderUseCase } from "../../../core/application/use-cases/cart/preview-repeat-order.use-case";
 
 const COMPANY_ID = "0f8fad5b-d9cb-469f-a165-70867728950e";
 
@@ -24,6 +25,9 @@ describe("CartController (HTTP)", () => {
     execute: jest.fn(() =>
       Promise.resolve({ cart: { items: [] }, added: 1, skipped: [] }),
     ),
+  };
+  const preview = {
+    execute: jest.fn(() => Promise.resolve({ lines: [], diners: null })),
   };
   const applyCoupon = {
     execute: jest.fn(() => Promise.resolve({ items: [], coupon: null })),
@@ -52,6 +56,7 @@ describe("CartController (HTTP)", () => {
         { provide: RepeatOrderIntoCartUseCase, useValue: repeat },
         { provide: ApplyCartCouponUseCase, useValue: applyCoupon },
         { provide: RemoveCartCouponUseCase, useValue: removeCoupon },
+        { provide: PreviewRepeatOrderUseCase, useValue: preview },
       ],
     })
       .overrideGuard(JwtAuthGuard)
@@ -108,6 +113,73 @@ describe("CartController (HTTP)", () => {
       { orderId: COMPANY_ID },
       "en",
     );
+  });
+
+  // T-38: body opcional con lo editado y vista previa.
+  const ITEM_ID = "1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed";
+
+  it("POST /cart/repeat/:orderId con items los pasa al use-case", async () => {
+    await request(app.getHttpServer())
+      .post(`/cart/repeat/${COMPANY_ID}`)
+      .set("X-Company-Id", COMPANY_ID)
+      .send({ items: [{ orderItemId: ITEM_ID, quantity: 12 }] })
+      .expect(200);
+    expect(repeat.execute).toHaveBeenCalledWith(
+      COMPANY_ID,
+      { id: "user-1", role: "CLIENT" },
+      { orderId: COMPANY_ID, items: [{ orderItemId: ITEM_ID, quantity: 12 }] },
+      undefined,
+    );
+  });
+
+  it.each([
+    [{ items: [] }, "Elige al menos un producto para repetir"],
+    [
+      { items: [{ orderItemId: "no-uuid", quantity: 1 }] },
+      "items.0.orderItemId debe ser un UUID válido",
+    ],
+    [
+      { items: [{ orderItemId: ITEM_ID, quantity: 0 }] },
+      "items.0.quantity debe ser al menos 1",
+    ],
+    [
+      { items: [{ orderItemId: ITEM_ID, quantity: 1000 }] },
+      "items.0.quantity no puede ser mayor que 999",
+    ],
+  ])(
+    "POST /cart/repeat/:orderId con body inválido → 400 (%j)",
+    async (body, message) => {
+      const res = await request(app.getHttpServer())
+        .post(`/cart/repeat/${COMPANY_ID}`)
+        .set("X-Company-Id", COMPANY_ID)
+        .send(body)
+        .expect(400);
+      expect((res.body as { message: string[] }).message).toContain(message);
+      expect(repeat.execute).not.toHaveBeenCalled();
+    },
+  );
+
+  it("POST /cart/repeat/:orderId/preview sin body → todas las líneas", async () => {
+    await request(app.getHttpServer())
+      .post(`/cart/repeat/${COMPANY_ID}/preview?lang=en`)
+      .set("X-Company-Id", COMPANY_ID)
+      .expect(200);
+    expect(preview.execute).toHaveBeenCalledWith(
+      COMPANY_ID,
+      { id: "user-1", role: "CLIENT" },
+      COMPANY_ID,
+      undefined,
+      "en",
+    );
+    expect(repeat.execute).not.toHaveBeenCalled();
+  });
+
+  it("POST /cart/repeat/:orderId/preview con un id no UUID → 400", async () => {
+    await request(app.getHttpServer())
+      .post("/cart/repeat/no-es-uuid/preview")
+      .set("X-Company-Id", COMPANY_ID)
+      .expect(400);
+    expect(preview.execute).not.toHaveBeenCalled();
   });
 
   it("GET /cart?lang=fr → 400", async () => {

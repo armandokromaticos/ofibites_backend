@@ -1,7 +1,7 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { IOrderRepository } from "../../../domain/repositories/order.repository.interface";
 import {
-  ORDER_FULL_INCLUDE,
+  ORDER_DETAIL_INCLUDE,
   ORDER_REPOSITORY,
 } from "../../../domain/repositories/order.repository.interface";
 import type { ICompanyMemberRepository } from "../../../domain/repositories/company-member.repository.interface";
@@ -26,7 +26,7 @@ export class GetOrderUseCase {
   ): Promise<OrderEntity> {
     const order = await this.orderRepository.findUnique({
       where: { id: orderId },
-      include: ORDER_FULL_INCLUDE,
+      include: ORDER_DETAIL_INCLUDE,
     });
     if (!order) {
       throw new NotFoundException(`Order with id ${orderId} not found`);

@@ -229,6 +229,7 @@ export class CheckoutOrderUseCase {
       subtotal: summary.subtotal,
       discount: summary.discount,
       tax: summary.tax,
+      taxRate: summary.taxRate,
       shipping: summary.shipping,
       total: summary.total,
       items,

@@ -59,6 +59,23 @@ export function buildCheckoutCartDeleteQuery(
   return Prisma.sql`DELETE FROM "cart_items" WHERE "cart_id" = ${cart.cartId} AND ("id", "quantity") IN (${pairs})`;
 }
 
+/** Fila de `OrderStatusHistory` de una transición (T-38). */
+export function buildStatusHistoryRow(
+  orderId: string,
+  from: OrderStatus,
+  to: OrderStatus,
+  changedAt: Date,
+  changedById?: string,
+): Prisma.OrderStatusHistoryUncheckedCreateInput {
+  return {
+    orderId,
+    fromStatus: from,
+    toStatus: to,
+    changedAt,
+    changedById: changedById ?? null,
+  };
+}
+
 @Injectable()
 export class OrderRepository implements IOrderRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -212,6 +229,7 @@ export class OrderRepository implements IOrderRepository {
     id: string,
     status: OrderStatus,
     from: OrderStatus,
+    changedById?: string,
   ): Promise<OrderEntity> {
     const now = new Date();
     const order = await this.prisma.$transaction(
@@ -232,6 +250,10 @@ export class OrderRepository implements IOrderRepository {
         if (moved.count !== 1) {
           throw new InvoiceRuleException("ORDER_STATUS_CHANGED");
         }
+        // T-38: historial de la transición, solo si el pedido se movió.
+        await tx.orderStatusHistory.create({
+          data: buildStatusHistoryRow(id, from, status, now, changedById),
+        });
         if (status === OrderStatus.CONFIRMED) {
           await issueInvoiceWithin(tx, id, now);
         }

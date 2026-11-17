@@ -56,6 +56,7 @@ function order(
     discount: 0,
     tax: 0,
     shipping: 0,
+    taxRate: 0,
     total: 0,
     orderNumber: "OF-2026-0001",
     receiverName: null,
@@ -462,5 +463,122 @@ describe("RepeatOrderIntoCartUseCase", () => {
     await expect(
       useCase.execute("company-1", buyer, { last: true }),
     ).rejects.toThrow("No tienes pedidos para repetir en esta empresa");
+  });
+});
+
+describe("RepeatOrderIntoCartUseCase con lo editado (T-38)", () => {
+  const twoLines = () =>
+    order([
+      { productId: "p-1", productSizeId: "s-1", quantity: 40 },
+      { productId: "p-2", quantity: 10, modifierIds: ["m-1"] },
+    ]);
+
+  it("copia solo las líneas elegidas con sus cantidades", async () => {
+    const { useCase, cartRepository } = setup({
+      found: twoLines(),
+      member: true,
+    });
+    const result = await useCase.execute("company-1", buyer, {
+      orderId: ORDER_ID,
+      items: [{ orderItemId: "oi-1", quantity: 12 }],
+    });
+    expect(cartRepository.addItemsAtomically).toHaveBeenCalledWith(
+      "company-1",
+      buyer.id,
+      [
+        {
+          productId: "p-2",
+          productSizeId: null,
+          comboId: null,
+          quantity: 12,
+          modifierIds: ["m-1"],
+          addedById: buyer.id,
+        },
+      ],
+    );
+    expect(result.added).toBe(1);
+  });
+
+  it("sin items se comporta como antes (todas, con su cantidad)", async () => {
+    const { useCase, cartRepository } = setup({
+      found: twoLines(),
+      member: true,
+    });
+    await useCase.execute("company-1", buyer, { orderId: ORDER_ID });
+    const calls = cartRepository.addItemsAtomically.mock.calls as unknown as [
+      string,
+      string,
+      { quantity: number }[],
+    ][];
+    expect(calls[0][2].map((l) => l.quantity)).toEqual([40, 10]);
+  });
+
+  it.each([
+    [
+      [
+        { orderItemId: "oi-0", quantity: 1 },
+        { orderItemId: "oi-0", quantity: 2 },
+      ],
+      "REPEAT_ITEM_DUPLICATED",
+      "La línea oi-0 está repetida",
+    ],
+    [
+      [{ orderItemId: "oi-ajena", quantity: 1 }],
+      "REPEAT_ITEM_NOT_IN_ORDER",
+      "La línea oi-ajena no pertenece al pedido",
+    ],
+  ])(
+    "400 con code si la selección no cuadra con el pedido (%#)",
+    async (items, code, message) => {
+      const { useCase, cartRepository } = setup({
+        found: twoLines(),
+        member: true,
+      });
+      const error = (await useCase
+        .execute("company-1", buyer, { orderId: ORDER_ID, items })
+        .catch((e: unknown) => e)) as BadRequestException;
+      expect(error).toBeInstanceOf(BadRequestException);
+      expect(error.getResponse()).toMatchObject({ code, message });
+      expect(cartRepository.addItemsAtomically).not.toHaveBeenCalled();
+    },
+  );
+
+  it("lista vacía → 400 sin tocar el carrito", async () => {
+    const { useCase, cartRepository } = setup({
+      found: twoLines(),
+      member: true,
+    });
+    await expect(
+      useCase.execute("company-1", buyer, { orderId: ORDER_ID, items: [] }),
+    ).rejects.toThrow("Elige al menos un producto para repetir");
+    expect(cartRepository.addItemsAtomically).not.toHaveBeenCalled();
+  });
+
+  it("si ninguna de las elegidas está disponible → 400 como hoy", async () => {
+    const { useCase } = setup({
+      found: twoLines(),
+      member: true,
+      availabilityCodes: { "p-2": "UNAVAILABLE" },
+    });
+    await expect(
+      useCase.execute("company-1", buyer, {
+        orderId: ORDER_ID,
+        items: [{ orderItemId: "oi-1", quantity: 3 }],
+      }),
+    ).rejects.toThrow(
+      "Ningún producto del pedido sigue disponible para añadir al carrito",
+    );
+  });
+
+  it("valida el pedido (404 de otra empresa) antes que la selección", async () => {
+    const { useCase } = setup({
+      found: order([{ productId: "p-1", quantity: 1 }], {
+        companyId: "otra",
+      }),
+      member: true,
+    });
+    await expect(
+      useCase.execute("company-1", buyer, { orderId: ORDER_ID, items: [] }),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 });

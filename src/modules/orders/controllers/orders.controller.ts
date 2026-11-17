@@ -30,6 +30,7 @@ import { CreateOrderDto } from "../../../core/application/dto/orders/create-orde
 import { UpdateOrderStatusDto } from "../../../core/application/dto/orders/update-order-status.dto";
 import { RepeatOrderDto } from "../../../core/application/dto/orders/repeat-order.dto";
 import { GetOrdersQueryDto } from "../../../core/application/dto/orders/get-orders-query.dto";
+import { OrderLangQueryDto } from "../../../core/application/dto/orders/order-lang-query.dto";
 import {
   OrderResponseDto,
   PaginatedOrderResponseDto,
@@ -113,7 +114,9 @@ export class OrdersController {
       query,
     );
     const maskPrices = user.role === Role.OPERATOR;
-    const dtos = data.map((order) => order.toResponseDto({ maskPrices }));
+    const dtos = data.map((order) =>
+      order.toResponseDto({ maskPrices, lang: query.lang }),
+    );
 
     if (typeof total === "number") {
       const response = new PaginatedOrderResponseDto();
@@ -129,11 +132,12 @@ export class OrdersController {
   @ApiOperation({ summary: "Obtener orden por ID" })
   async findOneOrder(
     @Param("id", ParseUUIDPipe) id: string,
+    @Query() query: OrderLangQueryDto,
     @CurrentUser() user: { id: string; role: Role },
   ): Promise<OrderResponseDto> {
     const entity = await this.getOrderUseCase.execute(id, user.id, user.role);
     const maskPrices = user.role === Role.OPERATOR;
-    return entity.toResponseDto({ maskPrices });
+    return entity.toResponseDto({ maskPrices, lang: query.lang });
   }
 
   @Patch(":id/status")

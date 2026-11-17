@@ -2,6 +2,9 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { OrderInvoiceResponseDto } from "../invoices/invoice-response.dto";
 import { OrderPriority } from "../../../domain/enums/order-priority.enum";
 import { OrderStatusGroup } from "../../../domain/services/order-status-groups";
+import { OrderStatus } from "../../../domain/enums/order-status.enum";
+import { ORDER_LINE_KINDS } from "../../../domain/services/order-composition";
+import type { OrderLineKind } from "../../../domain/services/order-composition";
 
 export class OrderItemModifierResponseDto {
   @ApiProperty()
@@ -16,6 +19,36 @@ export class OrderItemModifierResponseDto {
     description: "Oculto para roles sin acceso a precios",
   })
   priceAdjustment: number | null;
+
+  @ApiProperty({ description: "Nombre del modificador en lang (T-38)" })
+  name: string;
+}
+
+export class OrderPersonRefDto {
+  @ApiProperty()
+  id: string;
+
+  @ApiProperty()
+  name: string;
+}
+
+export class OrderStatusHistoryEntryDto {
+  @ApiProperty({ enum: OrderStatus })
+  status: OrderStatus;
+
+  @ApiProperty({ enum: OrderStatusGroup })
+  statusGroup: OrderStatusGroup;
+
+  @ApiProperty({
+    description: "Momento del cambio (ISO). Mostrar en hora de Caracas.",
+  })
+  at: Date;
+
+  @ApiProperty({
+    description:
+      "true = fecha reconstruida en la migración (updated_at), no registrada en el momento",
+  })
+  estimated: boolean;
 }
 
 export class OrderItemResponseDto {
@@ -47,6 +80,47 @@ export class OrderItemResponseDto {
     description: "Oculto para roles sin acceso a precios",
   })
   subtotal: number | null;
+
+  @ApiProperty({
+    enum: ORDER_LINE_KINDS,
+    description:
+      'T-38: "box" si el tamaño elegido tiene servings; si no, "complement" (también combos y líneas sin tamaño)',
+  })
+  kind: OrderLineKind;
+
+  @ApiProperty({ description: "Nombre del combo o del producto, en lang" })
+  name: string;
+
+  @ApiPropertyOptional({ nullable: true, type: String })
+  image: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    type: String,
+    description: "Nombre del tamaño en lang",
+  })
+  sizeLabel: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    type: String,
+    description: "Descripción del tamaño en lang",
+  })
+  sizeDescription: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    type: String,
+    description: "Descripción del producto o del combo en lang",
+  })
+  description: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    type: Number,
+    description: "Personas que rinde el tamaño elegido",
+  })
+  servings: number | null;
 
   @ApiPropertyOptional({ type: () => [OrderItemModifierResponseDto] })
   modifiers?: OrderItemModifierResponseDto[];
@@ -132,10 +206,43 @@ export class OrderResponseDto {
   @ApiProperty({
     nullable: true,
     type: Number,
+    example: 0.16,
+    description:
+      "T-38: tasa de IVA congelada al crear el pedido (0 sin IVA). Oculto para roles sin acceso a precios",
+  })
+  taxRate: number | null;
+
+  @ApiProperty({
+    nullable: true,
+    type: Number,
     description:
       "subtotal − discount + tax + shipping. Oculto para roles sin acceso a precios",
   })
   total: number | null;
+
+  @ApiProperty({
+    nullable: true,
+    type: Number,
+    description:
+      "T-38: comensales calculados (Σ servings × quantity de las cajas). null si no hay cajas",
+  })
+  diners: number | null;
+
+  @ApiProperty({
+    type: () => OrderPersonRefDto,
+    nullable: true,
+    description: "T-38: quien hizo el pedido (user o, si falta, createdBy)",
+  })
+  user: OrderPersonRefDto | null;
+
+  @ApiProperty({ type: () => OrderPersonRefDto, nullable: true })
+  department: OrderPersonRefDto | null;
+
+  @ApiPropertyOptional({
+    type: () => [OrderStatusHistoryEntryDto],
+    description: "T-38: solo en GET /orders/:id, en orden cronológico",
+  })
+  statusHistory?: OrderStatusHistoryEntryDto[];
 
   @ApiPropertyOptional({
     nullable: true,

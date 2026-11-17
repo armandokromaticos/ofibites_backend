@@ -24,6 +24,7 @@ import { UpdateCartItemUseCase } from "../../core/application/use-cases/cart/upd
 import { RemoveCartItemUseCase } from "../../core/application/use-cases/cart/remove-cart-item.use-case";
 import { ClearCartUseCase } from "../../core/application/use-cases/cart/clear-cart.use-case";
 import { RepeatOrderIntoCartUseCase } from "../../core/application/use-cases/cart/repeat-order-into-cart.use-case";
+import { PreviewRepeatOrderUseCase } from "../../core/application/use-cases/cart/preview-repeat-order.use-case";
 import { ORDER_REPOSITORY } from "../../core/domain/repositories/order.repository.interface";
 import { OrderRepository } from "../../core/infrastructure/repositories/order.repository";
 import { COUPON_REPOSITORY } from "../../core/domain/repositories/coupon.repository.interface";
@@ -65,6 +66,7 @@ import { CompanyBillingService } from "../../core/application/services/company-b
     RemoveCartItemUseCase,
     ClearCartUseCase,
     RepeatOrderIntoCartUseCase,
+    PreviewRepeatOrderUseCase,
     ApplyCartCouponUseCase,
     RemoveCartCouponUseCase,
   ],

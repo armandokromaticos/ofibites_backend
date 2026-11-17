@@ -46,7 +46,12 @@ export class UpdateOrderStatusUseCase {
     // Emite (CONFIRMED) o anula (CANCELLED) la factura en la misma transacción;
     // con pagos aprobados no se cancela (400 ORDER_HAS_APPROVED_PAYMENTS).
     const updated = await withInvoiceHttpErrors(() =>
-      this.orderRepository.updateStatus(orderId, newStatus, order.status),
+      this.orderRepository.updateStatus(
+        orderId,
+        newStatus,
+        order.status,
+        actorUserId,
+      ),
     );
     // No lanza: si falla la notificación, la transición ya quedó guardada.
     await this.orderStatusNotifications.notifyStatusChange(

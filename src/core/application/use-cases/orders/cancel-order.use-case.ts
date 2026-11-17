@@ -53,6 +53,7 @@ export class CancelOrderUseCase {
         orderId,
         OrderStatus.CANCELLED,
         order.status,
+        userId,
       ),
     );
     // No lanza. Si cancela el propio dueño del pedido no se le notifica.

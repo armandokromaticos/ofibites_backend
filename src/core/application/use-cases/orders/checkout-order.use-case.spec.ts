@@ -123,6 +123,7 @@ function persisted(entity: OrderEntity): OrderEntity {
     discount: entity.discount,
     tax: entity.tax,
     shipping: entity.shipping,
+    taxRate: entity.taxRate,
     total: entity.total,
     orderNumber: "OF-2026-0007",
     receiverName: entity.receiverName,
